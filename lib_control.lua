@@ -1,4 +1,4 @@
-local Position = require '__FARL-Revised__/stdlib/area/position'
+local Position = require '__FARL-Revised_Shoter__/stdlib/area/position'
 
 local M = {}
 

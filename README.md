@@ -1,8 +1,8 @@
-# FARL Revised
+# FARL Revised Shoter
 
 A Factorio 2.0 continuation of Choumiko's Fully Automated Rail Layer.
 
-Internal mod name: `FARL-Revised`
+Internal mod name: `FARL-Revised_Shoter`
 
 - Places rails, signals, electric poles, concrete, etc. while driving
 - Customizable placement of poles, multiple parallel tracks, lamps, turrets etc. with blueprints
@@ -35,5 +35,5 @@ There are 2 remote functions to tell FARL whether it should raise on_robot_built
 If FARL should no longer keep on raising the events use this command (probably never):
  - `remote.call("farl", "remove_entity_from_trigger", "entity-name")`
  
-To make it work just add `FARL-Revised` as an optional dependency in your info.json and do the remote.call in on_configuration_changed.
+To make it work just add `FARL-Revised_Shoter` as an optional dependency in your info.json and do the remote.call in on_configuration_changed.
 FARL stores the names in runtime storage and only removes them if the interface is used or the entity doesn't exist anymore (checked in on_configuration_changed)

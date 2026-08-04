@@ -1,6 +1,6 @@
-local copyPrototype = require "__FARL-Revised__/lib"
+local copyPrototype = require "__FARL-Revised_Shoter__/lib"
 local farl = copyPrototype("locomotive", "locomotive", "farl")
-farl.icon = "__FARL-Revised__/graphics/icons/farl.png"
+farl.icon = "__FARL-Revised_Shoter__/graphics/icons/farl.png"
 farl.icon_size = 32
 farl.icon_mipmaps = 0
 farl.max_speed = 0.8

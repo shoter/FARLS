@@ -1,4 +1,4 @@
-local lib = require "__FARL-Revised__/lib_control"
+local lib = require "__FARL-Revised_Shoter__/lib_control"
 local saveVar = lib.saveVar
 local debugDump = lib.debugDump
 local startsWith = lib.startsWith

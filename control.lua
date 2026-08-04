@@ -1,18 +1,18 @@
-require '__FARL-Revised__/stdlib/string'
-require '__FARL-Revised__/stdlib/table'
-require "__FARL-Revised__/FarlSettings"
-require "__FARL-Revised__/FARL"
-require "__FARL-Revised__/GUI"
-local lib = require "__FARL-Revised__/lib_control"
+require '__FARL-Revised_Shoter__/stdlib/string'
+require '__FARL-Revised_Shoter__/stdlib/table'
+require "__FARL-Revised_Shoter__/FarlSettings"
+require "__FARL-Revised_Shoter__/FARL"
+require "__FARL-Revised_Shoter__/GUI"
+local lib = require "__FARL-Revised_Shoter__/lib_control"
 local saveVar = lib.saveVar
 local debugDump = lib.debugDump
 local mod_gui = require '__core__/lualib/mod-gui'
 
-local Position = require '__FARL-Revised__/stdlib/area/position'
+local Position = require '__FARL-Revised_Shoter__/stdlib/area/position'
 
-local v = require '__FARL-Revised__/semver'
+local v = require '__FARL-Revised_Shoter__/semver'
 
-local MOD_NAME = "FARL-Revised"
+local MOD_NAME = "FARL-Revised_Shoter"
 
 local function reset_storage()
     for key in pairs(storage) do
@@ -339,7 +339,10 @@ local function on_configuration_changed(data)
     end
 
     if data.mod_startup_settings_changed then
-        local tech_name = script.active_mods["IndustrialRevolution"] and "automated-rail-transportation" or "rail-signals"
+        local tech_name = "rail-signals"
+        if script.active_mods["IndustrialRevolution"] or not prototypes.technology["rail-signals"] then
+            tech_name = "automated-rail-transportation"
+        end
         for _, force in pairs(game.forces) do
             if force.technologies[tech_name] and force.technologies[tech_name].researched then
                 force.recipes["farl"].enabled = true

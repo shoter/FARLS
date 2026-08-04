@@ -1,4 +1,13 @@
 ---------------------------------------------------------------------------------------------------
+Version: 4.3.0
+Date: 2026-08-04
+  Changes:
+    - Renamed the mod to FARL Revised Shoter (internal name: FARL-Revised_Shoter).
+  Bugfixes:
+    - Fixed startup crash in getRailTypes when a legacy curved rail has no items that place it.
+    - Fixed the FARL recipe being impossible to unlock in Factorio 2.0: the unlock now attaches
+      to Automated rail transportation when the pre-2.0 rail-signals technology does not exist.
+---------------------------------------------------------------------------------------------------
 Version: 4.2.0
 Date: 2026-04-17
   Changes:
