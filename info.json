@@ -1,0 +1,12 @@
+{
+  "name": "FARL-Revised",
+  "version": "4.2.0",
+  "factorio_version": "2.0",
+  "title": "FARL Revised",
+  "author": "Zach; based on FARL by Choumiko",
+  "description": "A revised Factorio 2.0 continuation of Choumiko's Fully Automated Rail Layer.",
+  "dependencies": ["! FARL", "(?) VehiclesEquipement", "(?) TheFatController"],
+  "package":{
+    "ignore":[ "*.zip", "*.xcf" ]
+  }
+}
