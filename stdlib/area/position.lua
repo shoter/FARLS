@@ -77,6 +77,8 @@ end
 -- @tparam defines.direction direction in which to translate
 -- @tparam number distance distance of the translation
 -- @treturn LuaPosition a new translated position
+-- FARL uses old-style 8-way directions (0-7) internally; Factorio 2.0's
+-- defines.direction is 16-way, so this must not compare against the game defines.
 function Position.translate(pos, direction, distance)
     fail_if_missing(pos, 'missing position argument')
     fail_if_missing(direction, 'missing direction argument')
@@ -84,21 +86,21 @@ function Position.translate(pos, direction, distance)
 
     pos = Position.to_table(pos)
 
-    if direction == defines.direction.north then
+    if direction == 0 then --north
         return { x = pos.x, y = pos.y - distance }
-    elseif direction == defines.direction.northeast then
+    elseif direction == 1 then --northeast
         return { x = pos.x + distance, y = pos.y - distance }
-    elseif direction == defines.direction.east then
+    elseif direction == 2 then --east
         return { x = pos.x + distance, y = pos.y }
-    elseif direction == defines.direction.southeast then
+    elseif direction == 3 then --southeast
         return { x = pos.x + distance, y = pos.y + distance }
-    elseif direction == defines.direction.south then
+    elseif direction == 4 then --south
         return { x = pos.x, y = pos.y + distance }
-    elseif direction == defines.direction.southwest then
+    elseif direction == 5 then --southwest
         return { x = pos.x - distance, y = pos.y + distance }
-    elseif direction == defines.direction.west then
+    elseif direction == 6 then --west
         return { x = pos.x - distance, y = pos.y }
-    elseif direction == defines.direction.northwest then
+    elseif direction == 7 then --northwest
         return { x = pos.x - distance, y = pos.y - distance }
     end
 end
@@ -270,23 +272,11 @@ function Position.center(pos)
     return {x = x, y = y}
 end
 
-local opposites = {
-    [defines.direction.north] = defines.direction.south,
-    [defines.direction.south] = defines.direction.north,
-    [defines.direction.east] = defines.direction.west,
-    [defines.direction.west] = defines.direction.east,
-    [defines.direction.northeast] = defines.direction.southwest,
-    [defines.direction.southwest] = defines.direction.northeast,
-    [defines.direction.northwest] = defines.direction.southeast,
-    [defines.direction.southeast] = defines.direction.northwest,
-}
-
---- Returns the opposite direction - Adapted from Factorio util.lua
--- @release 0.8.1
--- @tparam defines.direction direction to get the opposite of
--- @treturn defines.direction the opposite direction
+--- Returns the opposite direction, in FARL's 8-way direction space (0-7)
+-- @tparam number direction to get the opposite of
+-- @treturn number the opposite direction
 function Position.opposite_direction(direction)
-    return opposites[direction or defines.direction.north]
+    return ((direction or 0) + 4) % 8
 end
 
 -- Returns the next direction, for entities that only support 2 directions see Position.opposite_direction

@@ -166,7 +166,7 @@ defaultSettings = --luacheck: allow defined top
         poles = true,
         poleEntities = true,
         railType = 1,
-        rail = {curved = "legacy-curved-rail", straight = "legacy-straight-rail", index = 1, item="rail"},
+        rail = {straight = "straight-rail", curve_a = "curved-rail-a", curve_b = "curved-rail-b", half_diagonal = "half-diagonal-rail", index = 1, item = "rail"},
         signals = true,
         bulldozer = false,
         maintenance = false,
@@ -207,7 +207,8 @@ Settings = {--luacheck: allow defined top
     checkMods = function(self)
         self.electric = nil
         self.wooden = nil
-        if not self.railType then
+        if not self.railType or not self.rail or not self.rail.curve_a then
+            --also migrates pre-2.0-rails settings that still name legacy pieces
             self.railType = 1
             self.rail = storage.rails_by_index[1]
         end

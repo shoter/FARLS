@@ -1,8 +1,30 @@
 ---------------------------------------------------------------------------------------------------
+Version: 4.3.1
+Date: 2026-08-05
+  Bugfixes:
+    - Fixed FARL still placing legacy straight rails in saves created with 4.3.0: stale player
+      rail settings are now migrated, and rail placement refuses any configured rail whose
+      prototype type does not match the planned 2.0 piece.
+---------------------------------------------------------------------------------------------------
 Version: 4.3.0
-Date: 2026-08-04
+Date: 2026-08-05
+  Major Features:
+    - FARL now places modern Factorio 2.0 rails (straight-rail, curved-rail-a/b) instead of
+      legacy rails. Turns are built from curved-rail-a + curved-rail-b pairs. Placed track
+      connects seamlessly with hand-built 2.0 rails.
   Changes:
     - Renamed the mod to FARL Revised Shoter (internal name: FARL-Revised_Shoter).
+    - The whole planning table is generated from engine-verified rail adjacency data.
+    - FARL can continue from legacy track when starting on a straight north/south/east/west
+      piece; legacy diagonals and curves are not connectable to 2.0 rails by the game itself.
+    - Parallel lanes currently only work on straight cardinal track (not on 2.0 diagonals
+      or through curves). Half-diagonal travel is not supported yet.
+    - Custom blueprint reading works with 2.0 rails; blueprint direction handling was
+      fixed for the 16-direction system (chain signal detection, rotation).
+  Bugfixes:
+    - Fixed diagonal driving crash: "missing position argument" in FARL.lua (the vendored
+      stdlib compared FARL's 8-way directions against the 16-way defines of Factorio 2.0).
+    - Fixed Position.opposite_direction returning wrong values in Factorio 2.0.
   Bugfixes:
     - Fixed startup crash in getRailTypes when a legacy curved rail has no items that place it.
     - Fixed the FARL recipe being impossible to unlock in Factorio 2.0: the unlock now attaches

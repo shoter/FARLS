@@ -22,15 +22,40 @@ end
 local sqrt2 = math.sqrt(2)/2
 local curved_l = 3--7.7288196964265417438549920430937/2
 local entity_direction
-local function get_signal_weight(rail, settings)
+local curve_rail_types = { ["legacy-curved-rail"] = true, ["curved-rail-a"] = true, ["curved-rail-b"] = true }
+local function is_curve(rail_type)
+    return curve_rail_types[rail_type] or false
+end
+
+local all_rail_types = { "straight-rail", "half-diagonal-rail", "curved-rail-a", "curved-rail-b", "legacy-straight-rail", "legacy-curved-rail" }
+local rail_type_set = {}
+for _, t in pairs(all_rail_types) do
+    rail_type_set[t] = true
+end
+
+--how many rail items one placed entity of this type consumes
+local function place_cost(name)
+    local proto = prototypes.entity[name]
+    local item = proto and proto.items_to_place_this and proto.items_to_place_this[1]
+    return item and item.count or 1
+end
+
+local function get_signal_weight(rail, settings) --luacheck: ignore settings
     -- curve length from https://github.com/dewiniaid/RailTools/blob/master/librail.lua#L5
-    local weight = rail.name == settings.rail.curved and curved_l or 1
-    local direction = entity_direction(rail)
-    if not direction then return weight end
-    if rail.name ~= settings.rail.curved and direction % 2 == 1 then
-        return sqrt2
+    local rail_type = rail.type
+    if rail_type == "legacy-curved-rail" then
+        return curved_l
     end
-    return weight
+    if rail_type == "curved-rail-a" or rail_type == "curved-rail-b" then
+        return curved_l / 1.5
+    end
+    local direction = entity_direction(rail)
+    if not direction then return 1 end
+    if direction % 2 == 1 then
+        --a 2.0 diagonal piece covers two tiles of diagonal, a legacy one covered one
+        return rail_type == "straight-rail" and 2 * sqrt2 or sqrt2
+    end
+    return 1
 end
 
 local rot = {}
@@ -49,14 +74,18 @@ local function rotate(pos, rad)
     return ret
 end
 
+-- the planning table is keyed by actual 2.0 prototype type names now
 local function legacy_rail_type(rail_type)
-    if rail_type == "straight-rail" then
-        return "legacy-straight-rail"
-    elseif rail_type == "curved-rail" then
-        return "legacy-curved-rail"
-    end
     return rail_type
 end
+
+--maps a planned rail type to the settings.rail key holding the entity name to place
+local rail_type_to_setting = {
+    ["straight-rail"] = "straight",
+    ["curved-rail-a"] = "curve_a",
+    ["curved-rail-b"] = "curve_b",
+    ["half-diagonal-rail"] = "half_diagonal",
+}
 
 local function normalize_direction(direction)
     if not direction then return end
@@ -325,6 +354,7 @@ FARL.signalOffset =
             [0] = { pos = { x = 1.5, y = 0.5 }, dir = 4 }
         },
         [1] = {
+            [1] = { pos = { x = 1.5, y = 0.5 }, dir = 5 }, --2.0 diagonal rail
             [3] = { pos = { x = 1.5, y = 1.5 }, dir = 5 },
             [7] = { pos = { x = 0.5, y = 0.5 }, dir = 5 }
         },
@@ -333,12 +363,14 @@ FARL.signalOffset =
         },
         [3] = {
             [1] = { pos = { x = -0.5, y = 0.5 }, dir = 7 },
+            [3] = { pos = { x = -0.5, y = 1.5 }, dir = 7 }, --2.0 diagonal rail
             [5] = { pos = { x = -1.5, y = 1.5 }, dir = 7 }
         },
         [4] = {
             [0] = { pos = { x = -1.5, y = -0.5 }, dir = 0 }
         },
         [5] = {
+            [1] = { pos = { x = -1.5, y = -0.5 }, dir = 1 }, --2.0 diagonal rail
             [3] = { pos = { x = -0.5, y = -0.5 }, dir = 1 },
             [7] = { pos = { x = -1.5, y = -1.5 }, dir = 1 }
         },
@@ -347,6 +379,7 @@ FARL.signalOffset =
         },
         [7] = {
             [1] = { pos = { x = 1.5, y = -1.5 }, dir = 3 },
+            [3] = { pos = { x = 0.5, y = -1.5 }, dir = 3 }, --2.0 diagonal rail
             [5] = { pos = { x = 0.5, y = -0.5 }, dir = 3 }
         },
     }
@@ -357,6 +390,7 @@ FARL.real_signalOffset =
             [0] = { x = 1.5, y = 0.5 }
         },
         [1] = {
+            [1] = { x = 1.5, y = 0.5 }, --2.0 diagonal rail
             [3] = { x = 1, y = 1 },
             [7] = { x = 1, y = 1 }
         },
@@ -365,12 +399,14 @@ FARL.real_signalOffset =
         },
         [3] = {
             [1] = { x = -1, y = 1 },
+            [3] = { x = -0.5, y = 1.5 }, --2.0 diagonal rail
             [5] = { x = -1, y = 1 }
         },
         [4] = {
             [0] = { x = -1.5, y = -0.5 }
         },
         [5] = {
+            [1] = { x = -1.5, y = -0.5 }, --2.0 diagonal rail
             [3] = { x = -1, y = -1 },
             [7] = { x = -1, y = -1 }
         },
@@ -379,6 +415,7 @@ FARL.real_signalOffset =
         },
         [7] = {
             [1] = { x = 1, y = -1 },
+            [3] = { x = 0.5, y = -1.5 }, --2.0 diagonal rail
             [5] = { x = 1, y = -1 }
         },
     }
@@ -388,14 +425,14 @@ local function moveRail(rail, direction, distance)
     direction = normalize_direction(direction)
     local rail_direction = entity_direction(rail)
     distance = (rail.type == "legacy-straight-rail" and rail_direction % 2 == 1) and distance or distance * 2
-    local off = data[rail_direction] and data[rail_direction] or { x = 0, y = 0 }
+    local off = (rail.type == "legacy-straight-rail" and data[rail_direction]) or { x = 0, y = 0 }
     local pos = Position.add(off, rail.position)
     pos = Position.translate(pos, direction, distance)
     local newRail = get_fake_rail(rail, pos)
     if rail.type == "legacy-straight-rail" and rail_direction % 2 == 1 and distance % 2 == 1 then
         newRail.direction = (rail_direction + 4) % 8
     end
-    off = data[newRail.direction] or { x = 0, y = 0 }
+    off = (rail.type == "legacy-straight-rail" and data[newRail.direction]) or { x = 0, y = 0 }
     pos = Position.subtract(pos, off)
     newRail.position = pos
     return newRail
@@ -737,7 +774,7 @@ FARL.update = function(self, _)
                     end
                     --self:flyingText2("X", RED, true,self.path[1].rail.position)
 
-                    if last.type == "legacy-curved-rail" then
+                    if is_curve(last.type) then
                         self.lastCurve = { dist = -1, input = self.input, direction = self.direction, blocked = {}, curveblock = 0 }
                     else
                         self.lastCurve.dist = self.lastCurve.dist + 1
@@ -755,7 +792,7 @@ FARL.update = function(self, _)
                         --place rail entities (only walls for now), place on the mainrail euqal to the furthest lagging parallel track
                         if self.settings.railEntities and #self.settings.activeBP.straight.lanes == 0 then
                             local c = #self.path - 1
-                            if c > 0 and self.path[c] and self.path[c].rail.type ~= "legacy-curved-rail" then
+                            if c > 0 and self.path[c] and not is_curve(self.path[c].rail.type) then
                                 local rail = self.path[c].rail
                                 table.insert(self.rail_queue, { travelDir = self.path[c].travel_dir, rail = get_fake_rail(rail) })
                             end
@@ -768,7 +805,7 @@ FARL.update = function(self, _)
                             local dir = self.path[c - 1].travel_dir
                             --debugLog("calculating pole for rail@"..Position.tostring(self.path[c-1].rail.position))
                             local rails = self:getPoleRails(rail, dir, self.path[c - 2].travel_dir)
-                            if self.path[c - 2].rail.type == "legacy-curved-rail" and #rails > 0 then
+                            if is_curve(self.path[c - 2].rail.type) and #rails > 0 then
                                 rails[1].range[1] = -1
                             end
                             --local bestpole, bestrail = self:getBestPole(self.lastPole, rails, newTravelDir)
@@ -797,7 +834,7 @@ FARL.update = function(self, _)
 
                         if self.settings.signals then
                             self.signalCount.main = self.signalCount.main + get_signal_weight(last, self.settings)
-                            if last.type == "legacy-curved-rail" then
+                            if is_curve(last.type) then
                                 self.signalCount.main = self.signalCount.main - self.lanes.max_lag[newTravelDir % 2] - get_signal_weight(last, self.settings)
                             end
 
@@ -810,7 +847,7 @@ FARL.update = function(self, _)
                             max_path = -1
                             local all_placed = 0
                             for i, _ in pairs(self.settings.activeBP.straight.lanes) do
-                                if last.type == "legacy-curved-rail" then
+                                if is_curve(last.type) then
                                     local traveldir = newTravelDir
                                     local block = self:placeParallelCurve(newTravelDir, last, i)
                                     if block then
@@ -929,8 +966,14 @@ FARL.prepareArea = function(self, entity, rangeOrArea)
 end
 
 FARL.prepareAreaForCurve = function(self, newRail)
-    local areas = FARL.clearAreas[newRail.direction % 4]
-    for i = 1, 2 do
+    local areas
+    if newRail.type == "legacy-curved-rail" then
+        areas = FARL.clearAreas[newRail.direction % 4]
+    else
+        --2.0 curve pieces (curved-rail-a/b): one generous box around the piece
+        areas = { { { x = -3, y = -3 }, { x = 3, y = 3 } } }
+    end
+    for i = 1, #areas do
         local area = areas[i]
         local tl, lr = Position.add(newRail.position, area[1]), Position.add(newRail.position, area[2])
         area = { left_top = { x = tl.x - 1, y = tl.y - 1 }, right_bottom = { x = lr.x + 1, y = lr.y + 1 } }
@@ -939,7 +982,7 @@ FARL.prepareAreaForCurve = function(self, newRail)
         self:removeStone(area)
         self:removeCliffs(area)
         if self.settings.bulldozer or self.settings.maintenance then
-            local types = { "legacy-straight-rail", "legacy-curved-rail", "rail-signal", "rail-chain-signal", "electric-pole", "lamp", "wall" }
+            local types = { "straight-rail", "half-diagonal-rail", "curved-rail-a", "curved-rail-b", "legacy-straight-rail", "legacy-curved-rail", "rail-signal", "rail-chain-signal", "electric-pole", "lamp", "wall" }
             for _, t in pairs(types) do
                 self:removeEntitiesFiltered({ area = area, type = t }, self.protected)
             end
@@ -1106,7 +1149,7 @@ FARL.removeEntitiesFiltered = function(self, args)
         if not self:isProtected(entity) and (entity.force == force or entity.force == neutral_force) then
             local item = false
             local name = entity.name
-            if entity.type == "legacy-straight-rail" or entity.type == "legacy-curved-rail" then
+            if rail_type_set[entity.type] then
                 item = entity.name
             else
                 if entity.prototype.items_to_place_this then
@@ -1185,7 +1228,7 @@ FARL.replaceWater = function(self, tiles, w, dw)
 end
 
 FARL.placeConcrete = function(self, dir, rail)
-    if rail.type == "legacy-curved-rail" then return end
+    if is_curve(rail.type) then return end
     local rail_direction = entity_direction(rail)
     local type = rail_direction % 2 == 1 and "diagonal" or "straight"
     local concrete = self.settings.activeBP[type].concrete
@@ -1358,11 +1401,11 @@ FARL.find_tile = function(self, sarea1, sarea2, travel_dir)
 end
 
 FARL.bulldoze_area = function(self, rail, travel_dir)
-    if rail.type == "legacy-curved-rail" then
+    if is_curve(rail.type) then
         self:prepareAreaForCurve(rail)
         return
     end
-    local types = { "legacy-straight-rail", "legacy-curved-rail", "rail-signal", "rail-chain-signal", "electric-pole", "lamp", "wall" }
+    local types = { "straight-rail", "half-diagonal-rail", "curved-rail-a", "curved-rail-b", "legacy-straight-rail", "legacy-curved-rail", "rail-signal", "rail-chain-signal", "electric-pole", "lamp", "wall" }
     local rtype = travel_dir % 2 == 0 and "straight" or "diagonal"
     local bp = self.settings.activeBP[rtype]
 
@@ -1420,9 +1463,15 @@ FARL.getRail = function(self, lastRail, travelDir, input)
     end
     data = data[rail_direction][input]
 
-    local name = data.type == "legacy-straight-rail" and self.settings.rail.straight or self.settings.rail.curved
-    local newTravelDir = (travelDir + FARL.input2dir[input]) % 8
+    local setting_key = rail_type_to_setting[data.type]
+    local name = (setting_key and self.settings.rail[setting_key]) or data.type
+    local newTravelDir = (travelDir + (data.tdelta or FARL.input2dir[input])) % 8
     local prototype = prototypes.entity[name]
+    --never place a rail of the wrong type (e.g. a legacy name from stale pre-2.0-rails settings)
+    if not prototype or prototype.type ~= data.type then
+        name = data.type
+        prototype = prototypes.entity[name]
+    end
     return newTravelDir, { name = name, position = Position.add(lastRail.position, data.offset), direction = data.direction, type = prototype and prototype.type or data.type }
 end
 
@@ -1452,8 +1501,14 @@ FARL.getGhostRail = function(self, lastRail, travelDir, input)
     end
     data = data[rail_direction][input]
 
-    local name = data.type == "legacy-straight-rail" and self.settings.rail.straight or self.settings.rail.curved
-    local newTravelDir = (travelDir + FARL.input2dir[input]) % 8
+    local setting_key = rail_type_to_setting[data.type]
+    local name = (setting_key and self.settings.rail[setting_key]) or data.type
+    local newTravelDir = (travelDir + (data.tdelta or FARL.input2dir[input])) % 8
+    --never place a rail of the wrong type (e.g. a legacy name from stale pre-2.0-rails settings)
+    local prototype = prototypes.entity[name]
+    if not prototype or prototype.type ~= data.type then
+        name = data.type
+    end
     return newTravelDir, { name = "entity-ghost", ghost_name = name, ghost_type = data.type, position = Position.add(lastRail.position, data.offset),
         direction = data.direction, type = "entity-ghost"
     }
@@ -1672,7 +1727,7 @@ FARL.activate = function(self, scanForGhosts)
             self:deactivate({ "msg-error-2" }, true)
             return
         end
-        if self.lastrail.type == "legacy-curved-rail" then
+        if is_curve(self.lastrail.type) then
             self:deactivate({ "msg-error-curves" }, true)
             return
         end
@@ -1696,7 +1751,7 @@ FARL.activate = function(self, scanForGhosts)
         --debugDump(#self.path,true)
         if self.settings.bulldozer then
             bulldoze_rail = self:rail_behind_train()
-            if not bulldoze_rail or not same_orientation or bulldoze_rail.type == "legacy-curved-rail" then
+            if not bulldoze_rail or not same_orientation or is_curve(bulldoze_rail.type) then
                 debugDump("Train is on a curve somewhere, train doesn't like!", true)
                 self:deactivate()
                 return
@@ -1707,7 +1762,7 @@ FARL.activate = function(self, scanForGhosts)
         for i = #self.path - 1, #self.path - 3, -1 do
             if self.settings.railEntities and not self.settings.bulldozer then
                 local c = i
-                if c > 0 and self.path[c] and self.path[c].rail.type ~= "legacy-curved-rail" then
+                if c > 0 and self.path[c] and not is_curve(self.path[c].rail.type) then
                     local rail = self.path[c].rail
                     table.insert(self.rail_queue, { travelDir = self.path[c].travel_dir, rail = get_fake_rail(rail) })
                 end
@@ -2205,7 +2260,7 @@ FARL.parseBlueprints = function(self, blueprints)
             if rails == 1 and not offsets.chain then
                 local rail = offsets.rails[1]
                 local traveldir = bpType == "straight" and 0 or 1
-                local c = FARL.signalOffset[traveldir][blueprint_direction(rail.direction)]
+                local c = FARL.signalOffset[traveldir][rail.direction]
                 if c then
                     offsets.chain = { direction = c.dir, name = "rail-chain-signal", position = Position.add(rail.position, c.pos) }
                 end
@@ -2223,8 +2278,9 @@ FARL.parseBlueprints = function(self, blueprints)
                             signal.direction == offsets.chain.direction then
                             rail.main = true
                             mainRail = rail
-                            if blueprint_direction(rail.direction) == 3 then
-                                rail = self:getRail(mainRail, 1, 1)
+                            if rail.direction == 3 and rail.type == "legacy-straight-rail" then
+                                local _, next_rail = self:getRail(mainRail, 1, 1)
+                                rail = next_rail or rail
                             end
                             offsets.mainRail = rail
                         end
@@ -2257,15 +2313,15 @@ FARL.parseBlueprints = function(self, blueprints)
                     --log(string.format('y offset: %s', y_offset))
                     --move main pole next to the main rail
                     if bpType == "straight" then
-                        offsets.pole.position = Position.translate(offsets.pole.position, defines.direction.north, y_offset)
+                        offsets.pole.position = Position.translate(offsets.pole.position, 0, y_offset) --north, 8-way space
                     else
                         local distance = math.ceil((y_offset - x_offset) / 2)
                         --log(string.format('y offset: %s', distance))
-                        offsets.pole.position = Position.translate(offsets.pole.position, defines.direction.northeast, distance)
+                        offsets.pole.position = Position.translate(offsets.pole.position, 1, distance) --northeast, 8-way space
                     end
                     local railEntities = {}
                     for _, re in pairs(offsets.railEntities) do
-                        table.insert(railEntities, { name = re.name, position = Position.subtract(re.position, railPos), direction = blueprint_direction(re.direction) })
+                        table.insert(railEntities, { name = re.name, position = Position.subtract(re.position, railPos), direction = re.direction })
                     end
                     local concrete = blueprints[j].get_blueprint_tiles()
                     if concrete then
@@ -2292,7 +2348,7 @@ FARL.parseBlueprints = function(self, blueprints)
                                 {
                                     name = l.name,
                                     position = Position.subtract(l.position, mainRail.position),
-                                    direction = blueprint_direction(l.direction),
+                                    direction = l.direction,
                                     type = prototypes.entity[l.name].type,
                                     signal_number = l.signal_number,
                                     signal = l.signal
@@ -2311,7 +2367,7 @@ FARL.parseBlueprints = function(self, blueprints)
                                 for _, s in pairs(offsets.signals) do
                                     if s.entity_number == l.signal_number then
                                         local pos = Position.subtract(s.position, offsets.chain.position)
-                                        local reverse = (blueprint_direction(s.direction) ~= normalize_direction(offsets.chain.direction))
+                                        local reverse = (s.direction ~= normalize_direction(offsets.chain.direction))
                                         if bpType == "straight" then
                                             if pos.x % 2 == 0 then
                                                 reverse = false
@@ -2323,7 +2379,7 @@ FARL.parseBlueprints = function(self, blueprints)
                                         {
                                             name = s.name,
                                             position = pos,
-                                            direction = blueprint_direction(s.direction),
+                                            direction = s.direction,
                                             reverse = reverse,
                                             entity_number = s.entity_number,
                                             distance = lane_distance
@@ -2337,7 +2393,7 @@ FARL.parseBlueprints = function(self, blueprints)
                                 known_rails[lane_distance] = true
                             end
                             local altRail, _
-                            if blueprint_direction(l.direction) % 2 == 1 and blueprint_direction(mainRail.direction) == blueprint_direction(l.direction) then
+                            if l.direction % 2 == 1 and mainRail.direction == l.direction then
                                 _, altRail = self:getRail(tmp, move_dir, 1)
                                 altRail.signal_number = l.signal_number
                                 altRail.signal = l.signal
@@ -2353,7 +2409,7 @@ FARL.parseBlueprints = function(self, blueprints)
                     local signals = {}
                     for _, l in pairs(offsets.signals) do
                         local pos = Position.subtract(l.position, offsets.chain.position)
-                        local reverse = (blueprint_direction(l.direction) ~= normalize_direction(offsets.chain.direction))
+                        local reverse = (l.direction ~= normalize_direction(offsets.chain.direction))
                         if bpType == "straight" then
                             if pos.x % 2 == 0 then
                                 reverse = false
@@ -2365,7 +2421,7 @@ FARL.parseBlueprints = function(self, blueprints)
                             {
                                 name = l.name,
                                 position = pos,
-                                direction = blueprint_direction(l.direction),
+                                direction = l.direction,
                                 reverse = reverse,
                                 entity_number = l.entity_number
                             })
@@ -2403,7 +2459,7 @@ FARL.parseBlueprints = function(self, blueprints)
                     --debugDump({tl=tl,br=br},true)
                     local blueprint = {
                         mainRail = mainRail,
-                        direction = blueprint_direction(mainRail.direction),
+                        direction = mainRail.direction,
                         pole = offsets.pole,
                         poleEntities = lamps,
                         rails = bp_rails,
@@ -2447,16 +2503,16 @@ FARL.placeRails = function(self, nextRail, newTravelDir)
     local newDir = nextRail.direction
     local newRail = get_fake_rail(nextRail)
 
-    if newRail.type == "legacy-curved-rail" then
+    if is_curve(newRail.type) then
         self:prepareAreaForCurve(newRail)
     end
-    local rtype = newDir % 2 == 0 and "straight" or "diagonal"
+    local rtype = newTravelDir % 2 == 0 and "straight" or "diagonal"
     local bp = self.settings.activeBP[rtype]
     local canplace
-    if (self.settings.bulldozer or self.settings.maintenance) and newRail.type ~= "legacy-curved-rail" then
+    if (self.settings.bulldozer or self.settings.maintenance) and not is_curve(newRail.type) then
         self:bulldoze_area(newRail, newTravelDir)
     end
-    if newRail.direction % 2 == 0 and newRail.type ~= "legacy-curved-rail" then
+    if newDir % 2 == 0 and not is_curve(newRail.type) then
         local area = self:createBoundingBox(newRail, newTravelDir)
         canplace = self:prepareArea(newRail, area)
         if not canplace then
@@ -2467,7 +2523,7 @@ FARL.placeRails = function(self, nextRail, newTravelDir)
         canplace = self:prepareArea(newRail)
     end
 
-    if newRail.direction % 2 == 1 and newRail.name == self.settings.rail.straight then
+    if newDir % 2 == 1 and newRail.name == self.settings.rail.straight then
         for _, p in pairs(bp.clearance_points) do
             local pos = move_right_forward(newRail.position, newTravelDir, p.x, 0)
             local area = Position.expand_to_area(pos, 1.5)
@@ -2478,8 +2534,8 @@ FARL.placeRails = function(self, nextRail, newTravelDir)
         end
     end
 
-    local removeAmount = newRail.type == "legacy-curved-rail" and 4 or 1
-    local removeItem = self.settings.rail.straight
+    local removeAmount = place_cost(newRail.name)
+    local removeItem = newRail.name
     local hasRail = self:getCargoCount(newRail.name) >= removeAmount
 
     if canplace and hasRail then
@@ -2588,6 +2644,10 @@ FARL.protectRails = function(self, last_, dir_, limit)
 end
 
 FARL.placeParallelCurve = function(self, traveldir, rail, lane_index)
+    if rail.type ~= "legacy-curved-rail" then
+        --parallel lanes across 2.0 curve pieces are not supported yet
+        return nil
+    end
     local direction = self.direction
     local input = self.input
     local s_lane = self.settings.activeBP.straight.lanes[lane_index]
@@ -2678,6 +2738,10 @@ FARL.placeParallelTrack = function(self, traveldir, lastRail, lane_index)
     local s_lane = self.settings.activeBP.straight.lanes[lane_index]
     local d_lane = self.settings.activeBP.diagonal.lanes[lane_index]
     local new_rail = get_fake_rail(lastRail)
+    if new_rail.type == "straight-rail" and new_rail.direction % 2 == 1 then
+        --parallel lanes on 2.0 diagonal track are not supported yet
+        return false
+    end
     local lane = self.lanes["d" .. traveldir % 2]["i0"]["l" .. lane_index]
     local right = traveldir % 2 == 1 and d_lane or s_lane
     local lag = min(lane.lag, self.lanes["d" .. traveldir % 2]["i2"]["l" .. lane_index].lag)
@@ -2737,7 +2801,7 @@ end
 
 FARL.placeParallelSignals = function(self, traveldir, rail, lane_index)
     --if self.signalCount[lane_index] > self.settings.signalDistance and rail.name ~= self.settings.rail.curved then
-    if self.signal_in[lane_index] and self.signal_in[lane_index] < 1 and rail.type ~= "legacy-curved-rail" then
+    if self.signal_in[lane_index] and self.signal_in[lane_index] < 1 and not is_curve(rail.type) then
         local cargo_count = self:getCargoCount("rail-signal")
         local place_ghost = self.settings.place_ghosts and cargo_count == 0
         if self.settings.place_ghosts or cargo_count > 0 then
@@ -2793,7 +2857,7 @@ FARL.calcPole = function(self, lastrail, traveldir)
         local offset
         if not lastrail then error("no rail", 2) end
         if not lastrail.name or not lastrail.type then error("calcPole: invalid rail", 2) end
-        if lastrail.type ~= "legacy-curved-rail" then
+        if not is_curve(lastrail.type) then
             local diagonal = traveldir % 2 == 1 and true or false
             local pole = not diagonal and self.settings.activeBP.straight.pole or self.settings.activeBP.diagonal.pole
             local pos = Position.copy(pole.position)
@@ -2804,7 +2868,8 @@ FARL.calcPole = function(self, lastrail, traveldir)
                 offset = FARL.mirrorEntity(offset, traveldir)
             end
             if diagonal then
-                local railPos = lib.diagonal_data[entity_direction(lastrail)] or { x = 0, y = 0 }
+                --half-tile correction only applies to legacy diagonal pieces
+                local railPos = (lastrail.type == "legacy-straight-rail" and lib.diagonal_data[entity_direction(lastrail)]) or { x = 0, y = 0 }
                 offset = Position.add(railPos, offset)
             end
             return offset
@@ -3005,6 +3070,9 @@ FARL.getPoleRails = function(self, rail, newDir, oldDir)
             dDir = newDir
             rails = { [1] = { r = tmp.d, dir = dDir, range = { 0, 2 } }, [2] = { r = tmp.s, dir = sDir, range = { -1, 1 } } }
         end
+    elseif is_curve(rail.type) then
+        --2.0 curve pieces carry no pole anchor; poles resume on the next straight
+        rails = {}
     else
         rails = { { r = rail, dir = newDir, range = { 0, 1 } } }
     end
@@ -3069,7 +3137,7 @@ FARL.placePole = function(self, polePos, poleDir)
 end
 
 FARL.placeSignal = function(self, traveldir, rail)
-    if self.signalCount.main > self.settings.signalDistance and rail.type ~= "legacy-curved-rail" then
+    if self.signalCount.main > self.settings.signalDistance and not is_curve(rail.type) then
         local cargo_count = self:getCargoCount("rail-signal")
         local place_ghost = self.settings.place_ghosts and cargo_count == 0
         if self.settings.place_ghosts or cargo_count > 0 then
@@ -3141,7 +3209,7 @@ FARL.findLastPole = function(self, rail)
     local trainDir = self.direction or self:calcTrainDir()
     if not pole then
         local offset = { x = 1, y = 1 }
-        if lastrail.type ~= "legacy-curved-rail" then
+        if not is_curve(lastrail.type) then
             offset = self:calcPole(lastrail, trainDir)
         else
             self:print("calcPole with curved2")
@@ -3383,186 +3451,8 @@ FARL.showArea2 = function(self, area)
 end
 
 -- [traveldir][rail_type][rail_dir][input] = offset, new rail dir, new rail type
-FARL.input_to_next_rail =
-    -- 0 to 4, 2 to 6: switch sign
-    {
-        -- North/South
-        [0] = {
-            ["legacy-straight-rail"] = {
-                [0] = {
-                    [0] = { offset = { x = -1, y = -5 }, direction = 0, type = "legacy-curved-rail" },
-                    [1] = { offset = { x = 0, y = -2 }, direction = 0, type = "legacy-straight-rail" },
-                    [2] = { offset = { x = 1, y = -5 }, direction = 1, type = "legacy-curved-rail" }
-                }
-            },
-            ["legacy-curved-rail"] = {
-                [4] = {
-                    [0] = { offset = { x = -2, y = -8 }, direction = 0, type = "legacy-curved-rail" },
-                    [1] = { offset = { x = -1, y = -5 }, direction = 0, type = "legacy-straight-rail" },
-                    [2] = { offset = { x = 0, y = -8 }, direction = 1, type = "legacy-curved-rail" }
-                },
-                [5] = {
-                    [0] = { offset = { x = 0, y = -8 }, direction = 0, type = "legacy-curved-rail" },
-                    [1] = { offset = { x = 1, y = -5 }, direction = 0, type = "legacy-straight-rail" },
-                    [2] = { offset = { x = 2, y = -8 }, direction = 1, type = "legacy-curved-rail" }
-                },
-            }
-        },
-        [4] = {
-            ["legacy-straight-rail"] = {
-                [0] = {
-                    [0] = { offset = { x = 1, y = 5 }, direction = 4, type = "legacy-curved-rail" },
-                    [1] = { offset = { x = 0, y = 2 }, direction = 0, type = "legacy-straight-rail" },
-                    [2] = { offset = { x = -1, y = 5 }, direction = 5, type = "legacy-curved-rail" }
-                }
-            },
-            ["legacy-curved-rail"] = {
-                [0] = {
-                    [0] = { offset = { x = 2, y = 8 }, direction = 4, type = "legacy-curved-rail" },
-                    [1] = { offset = { x = 1, y = 5 }, direction = 0, type = "legacy-straight-rail" },
-                    [2] = { offset = { x = 0, y = 8 }, direction = 5, type = "legacy-curved-rail" }
-                },
-                [1] = {
-                    [0] = { offset = { x = 0, y = 8 }, direction = 4, type = "legacy-curved-rail" },
-                    [1] = { offset = { x = -1, y = 5 }, direction = 0, type = "legacy-straight-rail" },
-                    [2] = { offset = { x = -2, y = 8 }, direction = 5, type = "legacy-curved-rail" }
-                },
-            }
-        },
-        -- East/West
-        [2] = {
-            ["legacy-straight-rail"] = {
-                [2] = {
-                    [0] = { offset = { x = 5, y = -1 }, direction = 2, type = "legacy-curved-rail" },
-                    [1] = { offset = { x = 2, y = 0 }, direction = 2, type = "legacy-straight-rail" },
-                    [2] = { offset = { x = 5, y = 1 }, direction = 3, type = "legacy-curved-rail" }
-                }
-            },
-            ["legacy-curved-rail"] = {
-                [6] = {
-                    [0] = { offset = { x = 8, y = -2 }, direction = 2, type = "legacy-curved-rail" },
-                    [1] = { offset = { x = 5, y = -1 }, direction = 2, type = "legacy-straight-rail" },
-                    [2] = { offset = { x = 8, y = 0 }, direction = 3, type = "legacy-curved-rail" }
-                },
-                [7] = {
-                    [0] = { offset = { x = 8, y = 0 }, direction = 2, type = "legacy-curved-rail" },
-                    [1] = { offset = { x = 5, y = 1 }, direction = 2, type = "legacy-straight-rail" },
-                    [2] = { offset = { x = 8, y = -2 }, direction = 3, type = "legacy-curved-rail" }
-                }
-            }
-        },
-        [6] = {
-            ["legacy-straight-rail"] = {
-                [2] = {
-                    [0] = { offset = { x = -5, y = 1 }, direction = 6, type = "legacy-curved-rail" },
-                    [1] = { offset = { x = -2, y = 0 }, direction = 2, type = "legacy-straight-rail" },
-                    [2] = { offset = { x = -5, y = -1 }, direction = 7, type = "legacy-curved-rail" }
-                }
-            },
-            ["legacy-curved-rail"] = {
-                [2] = {
-                    [0] = { offset = { x = -8, y = 2 }, direction = 6, type = "legacy-curved-rail" },
-                    [1] = { offset = { x = -5, y = 1 }, direction = 2, type = "legacy-straight-rail" },
-                    [2] = { offset = { x = -8, y = 0 }, direction = 7, type = "legacy-curved-rail" }
-                },
-                [3] = {
-                    [0] = { offset = { x = -8, y = 0 }, direction = 6, type = "legacy-curved-rail" },
-                    [1] = { offset = { x = -5, y = -1 }, direction = 2, type = "legacy-straight-rail" },
-                    [2] = { offset = { x = -8, y = -2 }, direction = 7, type = "legacy-curved-rail" }
-                }
-            }
-        },
-        -- NE / SW
-        [1] = {
-            ["legacy-straight-rail"] = {
-                [3] = {
-                    [0] = { offset = { x = 3, y = -3 }, direction = 5, type = "legacy-curved-rail" },
-                    [1] = { offset = { x = 2, y = 0 }, direction = 7, type = "legacy-straight-rail" }
-                },
-                [7] = {
-                    [1] = { offset = { x = 0, y = -2 }, direction = 3, type = "legacy-straight-rail" },
-                    [2] = { offset = { x = 3, y = -3 }, direction = 6, type = "legacy-curved-rail" }
-                }
-            },
-            ["legacy-curved-rail"] = {
-                [1] = {
-                    [0] = { offset = { x = 4, y = -6 }, direction = 5, type = "legacy-curved-rail" },
-                    [1] = { offset = { x = 3, y = -3 }, direction = 7, type = "legacy-straight-rail" },
-                },
-                [2] = {
-                    [1] = { offset = { x = 3, y = -3 }, direction = 3, type = "legacy-straight-rail" },
-                    [2] = { offset = { x = 6, y = -4 }, direction = 6, type = "legacy-curved-rail" }
-                }
-            }
-        },
-        [5] = {
-            ["legacy-straight-rail"] = {
-                [3] = {
-                    [1] = { offset = { x = 0, y = 2 }, direction = 7, type = "legacy-straight-rail" },
-                    [2] = { offset = { x = -3, y = 3 }, direction = 2, type = "legacy-curved-rail" }
-                },
-                [7] = {
-                    [0] = { offset = { x = -3, y = 3 }, direction = 1, type = "legacy-curved-rail" },
-                    [1] = { offset = { x = -2, y = 0 }, direction = 3, type = "legacy-straight-rail" },
-                }
-            },
-            ["legacy-curved-rail"] = {
-                [5] = {
-                    [0] = { offset = { x = -4, y = 6 }, direction = 1, type = "legacy-curved-rail" },
-                    [1] = { offset = { x = -3, y = 3 }, direction = 3, type = "legacy-straight-rail" }
-                },
-                [6] = {
-                    [1] = { offset = { x = -3, y = 3 }, direction = 7, type = "legacy-straight-rail" },
-                    [2] = { offset = { x = -6, y = 4 }, direction = 2, type = "legacy-curved-rail" }
-                }
-            }
-        },
-        -- SE / NW
-        [3] = {
-            ["legacy-straight-rail"] = {
-                [1] = {
-                    [1] = { offset = { x = 2, y = 0 }, direction = 5, type = "legacy-straight-rail" },
-                    [2] = { offset = { x = 3, y = 3 }, direction = 0, type = "legacy-curved-rail" }
-                },
-                [5] = {
-                    [0] = { offset = { x = 3, y = 3 }, direction = 7, type = "legacy-curved-rail" },
-                    [1] = { offset = { x = 0, y = 2 }, direction = 1, type = "legacy-straight-rail" },
-                }
-            },
-            ["legacy-curved-rail"] = {
-                [3] = {
-                    [0] = { offset = { x = 6, y = 4 }, direction = 7, type = "legacy-curved-rail" },
-                    [1] = { offset = { x = 3, y = 3 }, direction = 1, type = "legacy-straight-rail" }
-                },
-                [4] = {
-                    [1] = { offset = { x = 3, y = 3 }, direction = 5, type = "legacy-straight-rail" },
-                    [2] = { offset = { x = 4, y = 6 }, direction = 0, type = "legacy-curved-rail" }
-                }
-            }
-        },
-        [7] = {
-            ["legacy-straight-rail"] = {
-                [1] = {
-                    [0] = { offset = { x = -3, y = -3 }, direction = 3, type = "legacy-curved-rail" },
-                    [1] = { offset = { x = 0, y = -2 }, direction = 5, type = "legacy-straight-rail" }
-                },
-                [5] = {
-                    [1] = { offset = { x = -2, y = 0 }, direction = 1, type = "legacy-straight-rail" },
-                    [2] = { offset = { x = -3, y = -3 }, direction = 4, type = "legacy-curved-rail" }
-                }
-            },
-            ["legacy-curved-rail"] = {
-                [0] = {
-                    [1] = { offset = { x = -3, y = -3 }, direction = 1, type = "legacy-straight-rail" },
-                    [2] = { offset = { x = -4, y = -6 }, direction = 4, type = "legacy-curved-rail" }
-                },
-                [7] = {
-                    [0] = { offset = { x = -6, y = -4 }, direction = 3, type = "legacy-curved-rail" },
-                    [1] = { offset = { x = -3, y = -3 }, direction = 5, type = "legacy-straight-rail" }
-                }
-            }
-        },
-    }
+--Engine-verified planning table for Factorio 2.0 rails, generated from probe data
+FARL.input_to_next_rail = require "__FARL-Revised_Shoter__/rail_data_v2"
 
 --clearArea[curveDir%4]
 FARL.clearAreas =

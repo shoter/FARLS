@@ -38,48 +38,18 @@ local function getRailTypes()
     storage.rails = {}
     storage.rails_by_index = {}
     storage.rails_localised = {}
-    local rails_by_item = {
-        rail = {
-            curved = "legacy-curved-rail",
-            straight = "legacy-straight-rail",
+    --FARL places the modern 2.0 rail set
+    local rails_by_item = {}
+    if prototypes.entity["straight-rail"] and prototypes.entity["curved-rail-a"] and prototypes.entity["curved-rail-b"] then
+        rails_by_item.rail = {
+            straight = "straight-rail",
+            curve_a = "curved-rail-a",
+            curve_b = "curved-rail-b",
+            half_diagonal = "half-diagonal-rail",
             item = "rail"
         }
-    }
-    if not prototypes.entity["legacy-curved-rail"] or not prototypes.entity["legacy-straight-rail"] then
-        rails_by_item = {}
     end
-    --local items = game.get_filtered_item_prototypes{{filter="place-result", elem_filters={{filter="rail"}}}}
     local railstring = ""
-    local rails = prototypes.get_entity_filtered({{filter="rail"}})
-    for name, proto in pairs(rails) do
-        if proto.type == "legacy-straight-rail" and proto.items_to_place_this then
-            for _, item in pairs(proto.items_to_place_this) do
-                if not rails_by_item[item.name] then
-                    rails_by_item[item.name] = {}
-                end
-                if not rails_by_item[item.name].straight then
-                    rails_by_item[item.name].straight = name
-                    rails_by_item[item.name].item = item.name
-                end
-            end
-        end
-        if proto.type == "legacy-curved-rail" and proto.items_to_place_this then
-            for _, item in pairs(proto.items_to_place_this) do
-                --log(serpent.block(item))
-                local item_proto = prototypes.item[item.name]
-                --log(serpent.block(item_proto.place_result.name))
-                if item_proto and item_proto.place_result and prototypes.entity[item_proto.place_result.name]
-                    and prototypes.entity[item_proto.place_result.name].type == "legacy-straight-rail" then
-                    if not rails_by_item[item.name] then
-                        rails_by_item[item.name] = {}
-                    end
-                    if not rails_by_item[item.name].curved then
-                        rails_by_item[item.name].curved = name
-                    end
-                end
-            end
-        end
-    end
     local index = 1
     if rails_by_item.rail then
         rails_by_item.rail.index = index
@@ -87,16 +57,6 @@ local function getRailTypes()
         storage.rails_localised[index] = prototypes.item["rail"].localised_name
         index = index + 1
         railstring = railstring .. "rail"
-    end
-
-    for item, rails in pairs(rails_by_item) do
-        if item ~= "rail" and rails.straight and rails.curved then
-            rails.index = index
-            storage.rails_by_index[index] = rails_by_item[item]
-            storage.rails_localised[index] = prototypes.item[item].localised_name
-            index = index + 1
-            railstring = railstring .. item
-        end
     end
     --log(serpent.block(rails_by_item))
     local rails_encoded = helpers.encode_string(helpers.table_to_json(rails_by_item))
@@ -153,7 +113,7 @@ local function init_global()
     storage.rails_by_index = storage.rails_by_index or {}
     storage.rails_localised = storage.rails_localised or {}
     storage.rails =  storage.rails or {
-        rail = {curved = "legacy-curved-rail", straight = "legacy-straight-rail", index = 1, item="rail"}
+        rail = {straight = "straight-rail", curve_a = "curved-rail-a", curve_b = "curved-rail-b", half_diagonal = "half-diagonal-rail", index = 1, item = "rail"}
     }
     if storage.debug_log == nil then
         storage.debug_log = false

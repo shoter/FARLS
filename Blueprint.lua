@@ -27,6 +27,9 @@ local rails_signals = {
         }
     },
     [1] = {
+        [1] = {
+            {x = -1.5, y = -0.5, traveldir = 5} --2.0 diagonal rail
+        },
         [3] = {
             {x = -0.5, y = -0.5, traveldir = 5}
         },
@@ -46,6 +49,9 @@ local rails_signals = {
             {x = 1.5, y = -1.5, traveldir = 7},
 
         },
+        [3] = {
+            {x = 0.5, y = -1.5, traveldir = 7} --2.0 diagonal rail
+        },
         [5] = {
             {x = 0.5, y = -0.5, traveldir = 7}
         }
@@ -57,6 +63,9 @@ local rails_signals = {
         }
     },
     [5] = {
+        [1] = {
+            {x = 1.5, y = 0.5, traveldir = 1} --2.0 diagonal rail
+        },
         [3] = {
             {x = 1.5, y = 1.5, traveldir = 1}
         },
@@ -76,6 +85,9 @@ local rails_signals = {
             {x = -0.5, y = 0.5, traveldir = 3},
 
         },
+        [3] = {
+            {x = -0.5, y = 1.5, traveldir = 3} --2.0 diagonal rail
+        },
         [5] = {
             {x = -1.5, y = 1.5, traveldir = 3}
         }
@@ -94,7 +106,8 @@ Blueprint.group_entities = function(bp)
     local e = bp.get_blueprint_entities()
     local first = false
     for i, ent in pairs(e) do
-        if not first and prototypes.entity[ent.name].type == "legacy-straight-rail" then
+        local ent_type = prototypes.entity[ent.name] and prototypes.entity[ent.name].type
+        if not first and (ent_type == "legacy-straight-rail" or ent_type == "straight-rail") then
             -- +1 because rails are always at uneven positions (set_blueprint_entities does some corrections)
             first = {x = ent.position.x+1, y = ent.position.y+1}
             break
@@ -114,7 +127,8 @@ Blueprint.group_entities = function(bp)
 
     for i=1, table_size(e) do
         if e[i].name == "rail-chain-signal" then
-            local dir = e[i].direction or 0
+            --blueprint entity directions are 16-way in 2.0; FARL thinks in 8-way
+            local dir = math.floor((e[i].direction or 0) / 2) % 8
             --local _, name = table.find(defines.direction, function(v, _, direction) return v == direction end, (dir + 4) % 8) --luacheck: ignore
             --log(string.format('Found chainsignal for driving due %s, direction: %d', tostring(name), dir))
             if not (dir == 4 or dir == 5) then
@@ -144,7 +158,8 @@ Blueprint.group_entities = function(bp)
         if box.br.x < position.x then box.br.x = position.x end
         if box.br.y < position.y then box.br.y = position.y end
 
-        local dir = e[i].direction or 0
+        --normalize the 16-way blueprint direction to FARL's 8-way space
+        local dir = math.floor((e[i].direction or 0) / 2) % 8
         local name = e[i].name
 
         if name == "rail-chain-signal" and not offsets.chain then
@@ -154,13 +169,13 @@ Blueprint.group_entities = function(bp)
             -- collect all poles in bp
         elseif prototype and prototype.type == "electric-pole" then
             table.insert(poles, {name = name, direction = dir, position = e[i].position, distance_to_chain = 0})
-        elseif prototype and prototype.type == "legacy-straight-rail" then
+        elseif prototype and (prototype.type == "legacy-straight-rail" or prototype.type == "straight-rail") then
             rails = rails + 1
             if not bpType then
-                bpType = (dir == 0 or dir == 4) and "straight" or "diagonal"
+                bpType = dir % 2 == 0 and "straight" or "diagonal"
             end
-            if  (bpType == "diagonal" and (dir == 3 or dir == 7)) or
-                (bpType == "straight" and (dir == 0 or dir == 4)) then
+            if  (bpType == "diagonal" and dir % 2 == 1) or
+                (bpType == "straight" and dir % 2 == 0) then
                 table.insert(offsets.rails, {name = name, direction = dir, position = e[i].position, type = prototypes.entity[name].type, entity_number = e[i].entity_number})
             else
                 return false, {"msg-bp-rail-direction"}
@@ -259,7 +274,8 @@ Blueprint.rotate = function(bp, degree)
         entity.position.x = cos * x - sin * y
         entity.position.y = sin * x + cos * y
         entity.direction = entity.direction or 0
-        entity.direction = ( entity.direction + degree / 45 ) % 8
+        --blueprint entity directions are 16-way in 2.0: 22.5 degrees per step
+        entity.direction = ( entity.direction + degree / 22.5 ) % 16
         --log(serpent.block({new_pos = entity.position, dir = entity.direction}))
         entity.pickup_position = entity.pickup_position and rotate(entity.pickup_position) or nil
         entity.drop_position = entity.drop_position and rotate(entity.drop_position) or nil
