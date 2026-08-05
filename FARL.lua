@@ -2892,9 +2892,11 @@ FARL.placePoleEntities = function(self, traveldir, pole)
     local rad = diff * (math.pi / 4)
     if type(poleEntities) == "table" then
         for i = 1, #poleEntities do
+            local entity_proto = prototypes.entity[poleEntities[i].name]
+            local is_lamp = entity_proto and entity_proto.type == "lamp"
             local cargo_count = self:getCargoCount(poleEntities[i].name)
             local place_ghost = self.settings.place_ghosts and cargo_count == 0
-            if self.settings.place_ghosts or cargo_count > 0 then
+            if not is_lamp and (self.settings.place_ghosts or cargo_count > 0) then
                 local offset = poleEntities[i].position
                 offset = rotate(offset, rad)
                 local direction = poleEntities[i].direction and (poleEntities[i].direction + diff) % 8 or 0
