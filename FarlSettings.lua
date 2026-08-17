@@ -3,14 +3,14 @@ require "__core__/lualib/util"
 --poleDistance = 1, side = right
 defaultsDiagonal = {--luacheck: allow defined top
     direction = 7,
-    poleEntities = {},
+    poleEntities = {{name = "small-lamp", position = {x = -1.5, y = 1.5}}},
     pole = {name = "big-electric-pole", position = {x = 2.5, y = 2.5}},
     rails = {}, signals = {}, lanes = {}, clearance_points = {{x = 1, y = 1}}, railEntities = {},
     boundingBox = {br = {x = 2.5, y = 4}, tl = {x = -1, y = 0}}}
 
 defaultsStraight = {--luacheck: allow defined top
     direction = 0,
-    poleEntities = {},
+    poleEntities = {{name = "small-lamp", position = {x = -0.5, y = 1.5}}},
     pole = {name = "big-electric-pole", position = {x = 3, y = -1}},
     rails = {}, signals = {}, lanes = {}, clearance_points = {}, railEntities = {},
     boundingBox = {br = {x = 3, y = 0.5}, tl = {x = -0.5, y = -1}}}
@@ -165,6 +165,7 @@ defaultSettings = --luacheck: allow defined top
         minPoles = true,
         poles = true,
         poleEntities = true,
+        placeLamps = false,
         railType = 1,
         rail = {straight = "straight-rail", curve_a = "curved-rail-a", curve_b = "curved-rail-b", half_diagonal = "half-diagonal-rail", index = 1, item = "rail"},
         signals = true,

@@ -1,18 +1,18 @@
-require '__FARL-Revised_Shoter__/stdlib/string'
-require '__FARL-Revised_Shoter__/stdlib/table'
-require "__FARL-Revised_Shoter__/FarlSettings"
-require "__FARL-Revised_Shoter__/FARL"
-require "__FARL-Revised_Shoter__/GUI"
-local lib = require "__FARL-Revised_Shoter__/lib_control"
+require '__FARLS__/stdlib/string'
+require '__FARLS__/stdlib/table'
+require "__FARLS__/FarlSettings"
+require "__FARLS__/FARL"
+require "__FARLS__/GUI"
+local lib = require "__FARLS__/lib_control"
 local saveVar = lib.saveVar
 local debugDump = lib.debugDump
 local mod_gui = require '__core__/lualib/mod-gui'
 
-local Position = require '__FARL-Revised_Shoter__/stdlib/area/position'
+local Position = require '__FARLS__/stdlib/area/position'
 
-local v = require '__FARL-Revised_Shoter__/semver'
+local v = require '__FARLS__/semver'
 
-local MOD_NAME = "FARL-Revised_Shoter"
+local MOD_NAME = "FARLS"
 
 local function reset_storage()
     for key in pairs(storage) do

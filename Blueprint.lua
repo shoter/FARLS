@@ -2,10 +2,10 @@
 --@module Blueprint
 
 local Blueprint = {}
-local Position = require '__FARL-Revised_Shoter__/stdlib/area/position'
---local saveVar = require '__FARL-Revised_Shoter__/lib_control.lua'['saveVar']
+local Position = require '__FARLS__/stdlib/area/position'
+--local saveVar = require '__FARLS__/lib_control.lua'['saveVar']
 local math = math
-local diagonal_to_real_pos = require("__FARL-Revised_Shoter__/lib_control").diagonal_to_real_pos
+local diagonal_to_real_pos = require("__FARLS__/lib_control").diagonal_to_real_pos
 
 local function get_max_wire_distance(name)
     local prototype = prototypes.entity[name]

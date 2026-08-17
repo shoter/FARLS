@@ -1,9 +1,9 @@
 require "__core__/lualib/util"
-local Position = require '__FARL-Revised_Shoter__/stdlib/area/position'
-local Area = require '__FARL-Revised_Shoter__/stdlib/area/area'
-local Blueprint = require "__FARL-Revised_Shoter__/Blueprint"
+local Position = require '__FARLS__/stdlib/area/position'
+local Area = require '__FARLS__/stdlib/area/area'
+local Blueprint = require "__FARLS__/Blueprint"
 
-local lib = require "__FARL-Revised_Shoter__/lib_control"
+local lib = require "__FARLS__/lib_control"
 local debugDump = lib.debugDump
 local debugLog = lib.debugLog
 local endsWith = lib.endsWith
@@ -2894,35 +2894,38 @@ FARL.placePoleEntities = function(self, traveldir, pole)
         for i = 1, #poleEntities do
             local entity_proto = prototypes.entity[poleEntities[i].name]
             local is_lamp = entity_proto and entity_proto.type == "lamp"
-            local cargo_count = self:getCargoCount(poleEntities[i].name)
-            local place_ghost = self.settings.place_ghosts and cargo_count == 0
-            if not is_lamp and (self.settings.place_ghosts or cargo_count > 0) then
-                local offset = poleEntities[i].position
-                offset = rotate(offset, rad)
-                local direction = poleEntities[i].direction and (poleEntities[i].direction + diff) % 8 or 0
-                local pickup_position = poleEntities[i].pickup_position and rotate(poleEntities[i].pickup_position, rad) or nil
-                local drop_position = poleEntities[i].drop_position and rotate(poleEntities[i].drop_position, rad) or nil
-                if self.settings.flipPoles then
-                    offset = FARL.mirrorEntity(offset, traveldir)
-                end
-                local pos = Position.add(pole, offset)
-                --debugDump(pos, true)
-                local entity = { name = poleEntities[i].name, position = pos }
-                if self:prepareArea(entity) then
-                    local _, ent = self:genericPlace(
-                        { name = poleEntities[i].name, position = pos, direction = direction, pickup_position = pickup_position,
-                            drop_position = drop_position, request_filters = poleEntities[i].request_filters, recipe  = poleEntities[i].recipe, force = self.locomotive.force
-                        }, false, place_ghost)
-                    --local _, ent = self:genericPlaceGhost {
-                    --name = poleEntities[i].name, position = pos, direction = direction, pickup_position = pickup_position, drop_position = drop_position,
-                    --request_filters = poleEntities[i].request_filters, recipe  = poleEntities[i].recipe, force = self.locomotive.force }
-                    if ent and ent.valid then
-                        self:protect(ent)
-                        if ent.type ~= "entity-ghost" then
-                            self:removeItemFromCargo(poleEntities[i].name, 1, cargo_count)
+            --skipped lamps must not reach getCargoCount, or it prints "Out of ..."
+            if not is_lamp or self.settings.placeLamps then
+                local cargo_count = self:getCargoCount(poleEntities[i].name)
+                local place_ghost = self.settings.place_ghosts and cargo_count == 0
+                if self.settings.place_ghosts or cargo_count > 0 then
+                    local offset = poleEntities[i].position
+                    offset = rotate(offset, rad)
+                    local direction = poleEntities[i].direction and (poleEntities[i].direction + diff) % 8 or 0
+                    local pickup_position = poleEntities[i].pickup_position and rotate(poleEntities[i].pickup_position, rad) or nil
+                    local drop_position = poleEntities[i].drop_position and rotate(poleEntities[i].drop_position, rad) or nil
+                    if self.settings.flipPoles then
+                        offset = FARL.mirrorEntity(offset, traveldir)
+                    end
+                    local pos = Position.add(pole, offset)
+                    --debugDump(pos, true)
+                    local entity = { name = poleEntities[i].name, position = pos }
+                    if self:prepareArea(entity) then
+                        local _, ent = self:genericPlace(
+                            { name = poleEntities[i].name, position = pos, direction = direction, pickup_position = pickup_position,
+                                drop_position = drop_position, request_filters = poleEntities[i].request_filters, recipe  = poleEntities[i].recipe, force = self.locomotive.force
+                            }, false, place_ghost)
+                        --local _, ent = self:genericPlaceGhost {
+                        --name = poleEntities[i].name, position = pos, direction = direction, pickup_position = pickup_position, drop_position = drop_position,
+                        --request_filters = poleEntities[i].request_filters, recipe  = poleEntities[i].recipe, force = self.locomotive.force }
+                        if ent and ent.valid then
+                            self:protect(ent)
+                            if ent.type ~= "entity-ghost" then
+                                self:removeItemFromCargo(poleEntities[i].name, 1, cargo_count)
+                            end
+                        else
+                            self:deactivate("Trying to place " .. poleEntities[i].name .. " failed")
                         end
-                    else
-                        self:deactivate("Trying to place " .. poleEntities[i].name .. " failed")
                     end
                 end
             end
@@ -3454,7 +3457,7 @@ end
 
 -- [traveldir][rail_type][rail_dir][input] = offset, new rail dir, new rail type
 --Engine-verified planning table for Factorio 2.0 rails, generated from probe data
-FARL.input_to_next_rail = require "__FARL-Revised_Shoter__/rail_data_v2"
+FARL.input_to_next_rail = require "__FARLS__/rail_data_v2"
 
 --clearArea[curveDir%4]
 FARL.clearAreas =

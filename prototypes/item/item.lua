@@ -3,7 +3,7 @@ data:extend(
         {
             type = "item-with-entity-data",
             name = "farl",
-            icon = "__FARL-Revised_Shoter__/graphics/icons/farl.png",
+            icon = "__FARLS__/graphics/icons/farl.png",
             icon_size = 32,
             icon_mipmaps = 0,
             subgroup = "train-transport",

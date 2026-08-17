@@ -1,4 +1,4 @@
-local lib = require "__FARL-Revised_Shoter__/lib_control"
+local lib = require "__FARLS__/lib_control"
 local saveVar = lib.saveVar
 local debugDump = lib.debugDump
 local startsWith = lib.startsWith
@@ -215,7 +215,7 @@ GUI = {
         end
         local psettings = Settings.loadByPlayer(player)
         if name == "signals" or name == "poles" or name == "ccNet" or name == "flipPoles" or name == "collectWood" or name == "dropWood"
-            or name == "poleEntities" or name == "parallelTracks" or name == "concrete" or name == "railEntities" or name == "mirrorConcrete"
+            or name == "poleEntities" or name == "placeLamps" or name == "parallelTracks" or name == "concrete" or name == "railEntities" or name == "mirrorConcrete"
             or name == "signalEveryPole" or name == "place_ghosts" or name == "remove_cliffs" or name == "fullCruise" then
             psettings[name] = not psettings[name]
             if name == "poles" then
@@ -389,6 +389,9 @@ GUI = {
 
             GUI.add(settings,{type="checkbox", name="poleEntities", caption={"stg-poleEntities"}, tooltip={"farl_tooltip_place_pole_entities"}},"poleEntities")
             GUI.add(settings, {type="checkbox", name="remove_cliffs", caption={"stg-remove-cliffs"}, tooltip={ "farl_tooltip_remove_cliffs", {"item-name.cliff-explosives"}}}, "remove_cliffs")
+
+            GUI.add(settings,{type="checkbox", name="placeLamps", caption={"stg-placeLamps"}, tooltip={"farl_tooltip_place_lamps"}}, "placeLamps")
+            GUI.addPlaceHolder(settings)
 
             GUI.add(settings,{type="checkbox", name="railEntities", caption={"stg-rail-entities"}, tooltip={"farl_tooltip_place_walls"}}, "railEntities")
             GUI.add(settings, { type = "checkbox", name="place_ghosts", caption = {"stg-place-ghosts"}, tooltip={"farl_tooltip_place_ghosts"}}, "place_ghosts")

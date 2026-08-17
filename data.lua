@@ -1,11 +1,11 @@
-local copyPrototype = require "__FARL-Revised_Shoter__/lib"
+local copyPrototype = require "__FARLS__/lib"
 
-require("__FARL-Revised_Shoter__/prototypes/equipment")
-require("__FARL-Revised_Shoter__/prototypes/entity/entities")
+require("__FARLS__/prototypes/equipment")
+require("__FARLS__/prototypes/entity/entities")
 
-require("__FARL-Revised_Shoter__/prototypes/item/item")
-require("__FARL-Revised_Shoter__/prototypes/recipe/recipe")
-require("__FARL-Revised_Shoter__/prototypes/styles")
+require("__FARLS__/prototypes/item/item")
+require("__FARLS__/prototypes/recipe/recipe")
+require("__FARLS__/prototypes/styles")
 
 local player = copyPrototype("character", "character", "farl_player")
 player.healing_per_tick = 100

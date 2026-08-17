@@ -1,11 +1,12 @@
 {
-  "name": "FARL-Revised_Shoter",
-  "version": "4.3.2",
+  "name": "FARLS",
+  "version": "2.0.0",
   "factorio_version": "2.0",
   "title": "FARL Revised Shoter",
-  "author": "Zach; based on FARL by Choumiko",
-  "description": "A revised Factorio 2.0 continuation of Choumiko's Fully Automated Rail Layer.",
-  "dependencies": ["! FARL", "(?) VehiclesEquipement", "(?) TheFatController"],
+  "author": "shoter",
+  "contact": "steam shoter0",
+  "description": "Fully Automated Rail Layer for Factorio 2.0. Based on FARL Revised created by Zach, itself a continuation of Choumiko's original FARL.",
+  "dependencies": ["! FARL", "! FARL-Revised_Shoter", "(?) VehiclesEquipement", "(?) TheFatController"],
   "package":{
     "ignore":[ "*.zip", "*.xcf" ]
   }
