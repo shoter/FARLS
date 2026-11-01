@@ -6,7 +6,7 @@
   "author": "shoter",
   "contact": "steam shoter0",
   "description": "Fully Automated Rail Layer for Factorio 2.0. Based on FARL Revised created by Zach, itself a continuation of Choumiko's original FARL.",
-  "dependencies": ["! FARL", "! FARL-Revised_Shoter", "(?) VehiclesEquipement", "(?) TheFatController"],
+  "dependencies": ["! FARL", "(?) VehiclesEquipement", "(?) TheFatController"],
   "package":{
     "ignore":[ "*.zip", "*.xcf" ]
   }
